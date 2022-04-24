@@ -12,7 +12,7 @@ import osgeo.osr as osr
 # Function to get info from html's forms
 def get_ndwi(green, nir, res):
 
-    dst_crs = 'EPSG:3857'
+    dst_crs = 'EPSG:4326'
     # To specife the main folders
     # a = os.listdir(r"C:/Users/rkoen/OneDrive/Документы/Cartometria/clipped" + r"/green_one")
     # b = os.listdir(r"C:/Users/rkoen/OneDrive/Документы/Cartometria/clipped" + r"/nir_one")
@@ -29,9 +29,9 @@ def get_ndwi(green, nir, res):
         ds_band3 = gdal.Open(path1 + i)
         ds_band5 = gdal.Open(path2 + y)
         
-        dsReprj_3 = gdal.Warp(res + '/reprjct_' + i[13:27] + '_' + i[-6:], ds_band3, dstSRS=dst_crs)
+        dsReprj_3 = gdal.Warp(res + '/reprjct_' + i[13:27] + '_' + i[-6:], ds_band3, dstSRS="EPSG:4326")
         name_3 = res + '/reprjct_' + i[13:27] + '_' + i[-6:]
-        dsReprj_5 = gdal.Warp(res + '/reprjct_' + y[13:27] + '_' + y[-6:], ds_band5, dstSRS=dst_crs)
+        dsReprj_5 = gdal.Warp(res + '/reprjct_' + y[13:27] + '_' + y[-6:], ds_band5, dstSRS='EPSG:4326')
         name_5 = res + '/reprjct_' + y[13:27] + '_' + y[-6:]
         
         band3 = rasterio.open(name_3)
@@ -65,8 +65,8 @@ def get_ndwi(green, nir, res):
         raster = rasterio.open(res + '/ndwi_' + i)
         raster_r = raster.read()
         lista = raster_r.copy()
-        lista[np.where(lista >= 0.4)] = 1
-        lista[np.where(lista < 0.4)] = 0
+        lista[np.where(lista >= 0.2)] = 1
+        lista[np.where(lista < 0.2)] = 0
         with rasterio.open(res + '/ndwi_' + i + '_class' + '.TIF', 'w',
                            driver=raster.driver,
                            height=raster.height,
@@ -80,7 +80,9 @@ def get_ndwi(green, nir, res):
         
         #Vectorize image
         b = gdal.Open(res + '/ndwi_' + i + '_class' + '.TIF')
-        d = b.GetRasterBand(1)
+        b.RasterCount
+        d = b.GetRasterBand(1) 
+        print(b.RasterCount)
         drv = ogr.GetDriverByName('ESRI Shapefile')
         outfile = drv.CreateDataSource(res + '/ndwi_' + i + '_class' + '.shp') 
         outlayer = outfile.CreateLayer('polygonized raster', srs = None )
@@ -91,8 +93,14 @@ def get_ndwi(green, nir, res):
         
         #Querying only vector water objects
         vec_crs = gp.read_file(res + '/ndwi_' + i + '_class' + '.shp')
-        vec_crs = vec_crs.set_crs(epsg=3857)
+        vec_crs = vec_crs.set_crs("EPSG:3857")
         vec3 = vec_crs[vec_crs["Water"].isin([1])]
-        vec3 = vec3.set_crs(epsg=3857)
-        vec3.to_file(res + '/ndwi_' + i + '_class_selected' + '.shp')                   
-    
+        vec3 = vec3.set_crs("EPSG:3857")
+        vec3.to_file(res + '/ndwi_' + i + '_class_selected.shp')   
+        gdf = gp.read_file(res + '/ndwi_' + i + '_class_selected.shp')
+        gdf_lat_lng = gdf.to_crs(4326)
+        gdf_save = gdf_lat_lng.to_file(res + '/ndwi_' + i + '_class_selected_latlng.geojson', driver='GeoJSON')
+        
+                           
+
+        
